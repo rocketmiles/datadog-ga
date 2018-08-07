@@ -17,14 +17,12 @@ Jonathan Makuc - Bithaus Chile (Datadog Partner) - jmakuc@bithaus.cl
 from checks import AgentCheck, CheckException
 
 from apiclient.discovery import build
-from oauth2client.service_account import ServiceAccountCredentials
+import google.auth
+from google.oauth2 import service_account
+from google.auth.transport.requests import AuthorizedSession
 
 import httplib2
 import time
-from pprint import pprint
-from oauth2client import client
-from oauth2client import file
-from oauth2client import tools
 from pprint import pprint
 
 MINUTES_AGO_METRIC = "rt:minutesAgo"
@@ -33,11 +31,18 @@ class GoogleAnalyticsCheck(AgentCheck):
   """ Collects as many metrics as instances defined in ga.yaml
   """
 
-  scope = ['https://www.googleapis.com/auth/analytics.readonly']
+  scopes = ['https://www.googleapis.com/auth/analytics.readonly']
   service = 0
-  apiName = 'analytics'
-  version = 'v3'
-  
+  api_name = 'analytics'
+  api_version = 'v3'
+
+  def __init__(self, *args, **kwargs):
+    AgentCheck.__init__(self, *args, **kwargs)
+    self.log.info('service_account_email: %s' % self.init_config.get('service_account_email'))
+    self.log.info('key_file_location: %s' % self.init_config.get('key_file_location'))
+    self.credentials = credentials = service_account.Credentials.from_service_account_file(self.init_config.get('key_file_location'))
+    self.service = build(self.api_name, self.api_version, credentials=self.credentials)    
+
   
   def check(self, instance):
     self.log.info('profile: %s, tags: %s, pageview_dimensions: %s' % (instance.get('profile'), instance.get('tags'), instance.get('pageview_dimensions')))        
@@ -97,26 +102,6 @@ class GoogleAnalyticsCheck(AgentCheck):
         
     self.log.info("{0} sent: {1}".format(gaMetricName, metricsSent));        
 
-  def __init__(self, *args, **kwargs):
-    AgentCheck.__init__(self, *args, **kwargs)
-    self.log.info('service_account_email: %s' % self.init_config.get('service_account_email'))
-    self.log.info('key_file_location: %s' % self.init_config.get('key_file_location'))
-    
-    self.service = self.get_service(
-      self.apiName, 
-      self.version, 
-      self.scope, 
-      self.init_config.get('key_file_location'), 
-      self.init_config.get('service_account_email'))
-  
-
-  def get_service(self, api_name, api_version, scope, key_file_location, service_account_email):
-    credentials = ServiceAccountCredentials.from_json_keyfile_name(key_file_location, scopes=scope)
-    http = credentials.authorize(httplib2.Http())
-    # Build the service object.
-    service = build(api_name, api_version, http=http)
-    return service
-    
     
   def get_results(self, profile_id, the_metric, dims):
     if len(dims) > 0:
