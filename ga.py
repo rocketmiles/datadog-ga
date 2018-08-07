@@ -16,7 +16,9 @@ Jonathan Makuc - Bithaus Chile (Datadog Partner) - jmakuc@bithaus.cl
 
 from checks import AgentCheck, CheckException
 
-from apiclient.discovery import build
+#from apiclient.discovery import build
+from googleapiclient.discovery import build
+
 import google.auth
 from google.oauth2 import service_account
 from google.auth.transport.requests import AuthorizedSession
